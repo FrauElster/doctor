@@ -1,0 +1,119 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Doctor Configuration",
+    "description": "Configuration schema for the Doctor health checking service",
+    "type": "object",
+    "required": [
+        "checkIntervalInSec",
+        "checkTimeoutInSec",
+        "targets"
+    ],
+    "properties": {
+        "checkIntervalInSec": {
+            "type": "integer",
+            "description": "Time between health checks in seconds",
+            "minimum": 1
+        },
+        "checkTimeoutInSec": {
+            "type": "integer",
+            "description": "HTTP request timeout in seconds",
+            "minimum": 1
+        },
+        "smtp": {
+            "type": "object",
+            "description": "Email notification settings",
+            "required": [
+                "from",
+                "password",
+                "smtpHost",
+                "smtpPort",
+                "toEmails"
+            ],
+            "properties": {
+                "from": {
+                    "type": "string",
+                    "description": "Sender email address",
+                    "format": "email"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "SMTP password"
+                },
+                "smtpHost": {
+                    "type": "string",
+                    "description": "SMTP server hostname"
+                },
+                "smtpPort": {
+                    "type": "string",
+                    "description": "SMTP server port",
+                    "pattern": "^[0-9]+$"
+                },
+                "toEmails": {
+                    "type": "array",
+                    "description": "List of recipient email addresses",
+                    "items": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "minItems": 1
+                },
+                "startTLSAuth": {
+                    "type": "boolean",
+                    "description": "Enable STARTTLS authentication"
+                }
+            }
+        },
+        "telegram": {
+            "type": "object",
+            "description": "Telegram notification settings",
+            "required": [
+                "botToken",
+                "chatId",
+                "throttleInSecs"
+            ],
+            "properties": {
+                "botToken": {
+                    "type": "string",
+                    "description": "Telegram bot token"
+                },
+                "chatId": {
+                    "type": "integer",
+                    "description": "Target chat ID"
+                },
+                "throttleInSecs": {
+                    "type": "integer",
+                    "description": "Minimum time between notifications in seconds",
+                    "minimum": 0
+                }
+            }
+        },
+        "targets": {
+            "type": "array",
+            "description": "List of URLs to monitor",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "url"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Unique identifier for the target"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "URL to check",
+                        "format": "uri"
+                    }
+                }
+            },
+            "minItems": 0
+        },
+        "port": {
+            "type": "integer",
+            "description": "Port to listen on",
+            "minimum": 1
+        }
+    }
+}
