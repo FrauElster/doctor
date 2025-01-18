@@ -1,0 +1,122 @@
+openapi: 3.0.0
+info:
+    title: Health Checker API
+    version: 1.0.0
+    description: API for registering and monitoring URL health checks
+
+servers:
+    - url: http://localhost:8080
+      description: Local development server
+
+paths:
+    /register:
+        post:
+            summary: Register a new URL for health checking
+            operationId: registerTarget
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Target"
+            responses:
+                "200":
+                    description: Target successfully registered
+                "400":
+                    description: Invalid target data
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                "405":
+                    description: Method not allowed
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                "500":
+                    description: Internal server error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+
+    /status:
+        get:
+            summary: Get health check status for all registered targets
+            operationId: getStatus
+            responses:
+                "200":
+                    description: List of health check results
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/HealthCheckResult"
+                "405":
+                    description: Method not allowed
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+
+components:
+    schemas:
+        Target:
+            type: object
+            required:
+                - url
+                - id
+            properties:
+                url:
+                    type: string
+                    format: uri
+                    description: The URL to be monitored
+                id:
+                    type: string
+                    description: Unique identifier for the target
+
+        HealthCheckResult:
+            type: object
+            required:
+                - id
+                - url
+                - status
+                - healthy
+                - timestamp
+                - duration_seconds
+            properties:
+                id:
+                    type: string
+                    description: Target identifier
+                url:
+                    type: string
+                    format: uri
+                    description: The monitored URL
+                status:
+                    type: integer
+                    description: HTTP status code from the health check
+                healthy:
+                    type: boolean
+                    description: Whether the target is considered healthy
+                timestamp:
+                    type: string
+                    format: date-time
+                    description: When the health check was performed
+                duration_seconds:
+                    type: number
+                    format: float
+                    description: Duration of the health check in seconds
+                error:
+                    type: string
+                    description: Error message if the health check failed
+
+        Error:
+            type: object
+            required:
+                - message
+            properties:
+                message:
+                    type: string
+                    description: Error message

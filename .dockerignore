@@ -1,0 +1,5 @@
+config.json
+*.yml
+*.md
+.git/
+.gitignore
