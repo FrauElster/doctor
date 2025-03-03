@@ -50,12 +50,7 @@ Doctor uses a JSON configuration file. Example:
         "chatId": xxx,
         "throttleInSecs": 300
     },
-    "targets": [
-        {
-            "id": "google",
-            "url": "https://google.com"
-        }
-    ]
+    "targetFile": "targets.json"
 }
 ```
 

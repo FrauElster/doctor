@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -32,33 +35,63 @@ type Result struct {
 
 // HealthChecker manages the health checking process
 type HealthChecker struct {
-	client  *http.Client
-	mu      sync.RWMutex
-	targets map[string]HealthTarget
+	client    *http.Client
+	mu        sync.RWMutex
+	targets   map[string]HealthTarget
+	storePath string
 }
 
 // NewHealthChecker creates a new HealthChecker instance
-func NewHealthChecker(timeout time.Duration) *HealthChecker {
-	return &HealthChecker{
-		targets: make(map[string]HealthTarget),
-		client:  &http.Client{Timeout: timeout},
+func NewHealthChecker(timeout time.Duration, storePath string) (*HealthChecker, error) {
+	hc := &HealthChecker{
+		targets:   make(map[string]HealthTarget),
+		client:    &http.Client{Timeout: timeout},
+		storePath: storePath,
 	}
+
+	if storePath != "" {
+		if err := hc.loadTargets(); err != nil {
+			return nil, errors.Wrap(err, "failed to load targets")
+		}
+	}
+
+	return hc, nil
 }
 
 // AddTarget adds a new target to the health checker
-func (hc *HealthChecker) AddTarget(target HealthTarget) {
+func (hc *HealthChecker) AddTarget(target HealthTarget) *ApiError {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 	hc.targets[target.ID] = target
 	registeredTargets.Inc()
+
+	if hc.storePath == "" {
+		return nil
+	}
+
+	if err := hc.saveTargets(); err != nil {
+		return ErrAddingTarget("failed to persist targets", err)
+	}
+
+	return nil
 }
 
 // RemoveTarget removes a target from the health checker
-func (hc *HealthChecker) RemoveTarget(id string) {
+func (hc *HealthChecker) RemoveTarget(id string) *ApiError {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 	delete(hc.targets, id)
 	registeredTargets.Dec()
+
+	if hc.storePath == "" {
+		return nil
+	}
+
+	if err := hc.saveTargets(); err != nil {
+		return ErrRemovingTarget("failed to persist targets", err)
+	}
+
+	return nil
 }
 
 // checkHealth performs the health check for a single target
@@ -141,4 +174,53 @@ func (hc *HealthChecker) CheckAll() []Result {
 	}
 	wg.Wait()
 	return results
+}
+
+func (hc *HealthChecker) loadTargets() error {
+	data, err := os.ReadFile(hc.storePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// It's okay if the file doesn't exist yet
+			return nil
+		}
+		return errors.Wrap(err, "failed to read targets file")
+	}
+
+	var targetsData []HealthTarget
+	if err := json.Unmarshal(data, &targetsData); err != nil {
+		return errors.Wrap(err, "failed to unmarshal targets data")
+	}
+
+	// Clear existing targets and add loaded ones
+	hc.targets = make(map[string]HealthTarget)
+	for _, target := range targetsData {
+		// Parse URL strings back into URL objects
+		parsedURL, err := url.Parse(target.URLString)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse URL from stored target")
+		}
+		target.URL = parsedURL
+		hc.targets[target.ID] = target
+		registeredTargets.Inc()
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) saveTargets() error {
+	targetsSlice := make([]HealthTarget, 0, len(hc.targets))
+	for _, target := range hc.targets {
+		targetsSlice = append(targetsSlice, target)
+	}
+
+	data, err := json.MarshalIndent(targetsSlice, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal targets data: %w", err)
+	}
+
+	if err := os.WriteFile(hc.storePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write targets file: %w", err)
+	}
+
+	return nil
 }

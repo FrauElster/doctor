@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -22,22 +22,36 @@ func (s *Server) GetHealth(w http.ResponseWriter, r *http.Request) {
 func (s *Server) RegisterTarget(w http.ResponseWriter, r *http.Request) {
 	var target Target
 	if err := json.NewDecoder(r.Body).Decode(&target); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		respondError(w, r, ErrParseJsonBody(err.Error(), err))
 		return
 	}
 
 	// Validate URL
 	parsedURL, err := url.Parse(target.Url)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid URL: %v", err), http.StatusBadRequest)
+		respondError(w, r, ErrInvalidUrl("", err))
 		return
 	}
 
-	s.checker.AddTarget(HealthTarget{
+	apiErr := s.checker.AddTarget(HealthTarget{
 		URL:       parsedURL,
 		URLString: target.Url,
 		ID:        target.Id,
 	})
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) UnregisterTarget(w http.ResponseWriter, r *http.Request, id string) {
+	apiErr := s.checker.RemoveTarget(id)
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -74,9 +88,20 @@ func (s *Server) GetStatus(w http.ResponseWriter, r *http.Request) {
 		jsonResults[i] = jsonResult
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(jsonResults); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
+	respondJSON(w, r, http.StatusOK, jsonResults)
+}
+
+func respondError(w http.ResponseWriter, r *http.Request, error *ApiError) {
+	slog.Error("unhandled error", "method", r.Method, "url", r.URL, "error", error.Error, "origin", error.Origin)
+	w.WriteHeader(error.Status)
+	_ = json.NewEncoder(w).Encode(Error{Code: error.Code, Message: error.Message})
+}
+
+func respondJSON(w http.ResponseWriter, r *http.Request, status int, data any) {
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		respondError(w, r, ErrEncodeJsonBody("", err))
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 }

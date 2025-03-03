@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -31,13 +30,9 @@ func main() {
 		onRecoverCallbacks = append(onRecoverCallbacks, NewEmailAlert(*config.SMTP))
 	}
 
-	checker := NewHealthChecker(time.Duration(config.CheckTimeoutInSec) * time.Second)
-	for _, target := range config.Targets {
-		url, err := url.Parse(target.Url)
-		if err != nil {
-			log.Fatalf("Failed to parse URL: %v", err)
-		}
-		checker.AddTarget(HealthTarget{ID: target.Id, URL: url, URLString: target.Url})
+	checker, err := NewHealthChecker(time.Duration(config.CheckTimeoutInSec)*time.Second, config.TargetFile)
+	if err != nil {
+		log.Fatalf("Failed to create health checker: %v", err)
 	}
 	monitor := NewHealthMonitor(checker, time.Duration(config.CheckIntervalInSec)*time.Second, onErrorCallbacks, onRecoverCallbacks)
 	go monitor.Start()

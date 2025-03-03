@@ -30,10 +30,33 @@ paths:
                         schema:
                             $ref: "#/components/schemas/Target"
             responses:
-                "200":
+                "204":
                     description: Target successfully registered
                 "400":
                     $ref: "#/components/responses/BadRequest"
+                "405":
+                    $ref: "#/components/responses/NotAllowed"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+
+    /unregister/{id}:
+        delete:
+            summary: Unregister a URL from health checking
+            operationId: unregisterTarget
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  description: The unique identifier of the target to unregister
+                  schema:
+                      type: string
+            responses:
+                "204":
+                    description: Target successfully unregistered
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "404":
+                    $ref: "#/components/responses/NotFound"
                 "405":
                     $ref: "#/components/responses/NotAllowed"
                 "500":
@@ -59,6 +82,12 @@ components:
     responses:
         BadRequest:
             description: Bad request
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+        NotFound:
+            description: Resource not found
             content:
                 application/json:
                     schema:
@@ -128,8 +157,12 @@ components:
         Error:
             type: object
             required:
+                - code
                 - message
             properties:
+                code:
+                    type: string
+                    description: Error code static for the error type
                 message:
                     type: string
-                    description: Error message
+                    description: Error message with further details

@@ -11,7 +11,7 @@ type Config struct {
 	CheckTimeoutInSec  int             `json:"checkTimeoutInSec"`
 	SMTP               *EmailConfig    `json:"smtp,omitempty"`
 	Telegram           *TelegramConfig `json:"telegram,omitempty"`
-	Targets            []Target        `json:"targets,omitempty"`
+	TargetFile         string          `json:"targetFile,omitempty"`
 	Port               int             `json:"port,omitempty"`
 }
 
