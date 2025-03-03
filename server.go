@@ -15,6 +15,10 @@ type Server struct {
 	checker *HealthChecker
 }
 
+func (s *Server) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) RegisterTarget(w http.ResponseWriter, r *http.Request) {
 	var target Target
 	if err := json.NewDecoder(r.Body).Decode(&target); err != nil {

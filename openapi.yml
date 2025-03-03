@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
     title: Health Checker API
-    version: 1.0.0
+    version: 1.0.1
     description: API for registering and monitoring URL health checks
 
 servers:
@@ -9,6 +9,16 @@ servers:
       description: Local development server
 
 paths:
+    /health:
+        get:
+            summary: Get the health status of the API
+            operationId: getHealth
+            responses:
+                "204":
+                    description: API is healthy
+                "500":
+                    description: API is unhealthy
+                    $ref: "#/components/responses/InternalServerError"
     /register:
         post:
             summary: Register a new URL for health checking
@@ -23,23 +33,11 @@ paths:
                 "200":
                     description: Target successfully registered
                 "400":
-                    description: Invalid target data
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Error"
+                    $ref: "#/components/responses/BadRequest"
                 "405":
-                    description: Method not allowed
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Error"
+                    $ref: "#/components/responses/NotAllowed"
                 "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Error"
+                    $ref: "#/components/responses/InternalServerError"
 
     /status:
         get:
@@ -55,13 +53,28 @@ paths:
                                 items:
                                     $ref: "#/components/schemas/HealthCheckResult"
                 "405":
-                    description: Method not allowed
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Error"
+                    $ref: "#/components/responses/NotAllowed"
 
 components:
+    responses:
+        BadRequest:
+            description: Bad request
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+        NotAllowed:
+            description: Method not allowed
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+        InternalServerError:
+            description: Internal server error
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
     schemas:
         Target:
             type: object
